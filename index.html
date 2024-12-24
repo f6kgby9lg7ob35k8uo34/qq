@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>v2</title>
+    <title>v1</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -74,6 +74,7 @@
             <label>Vertical Position:</label>
             <input type="range" id="verticalSlider" min="0" max="2560" value="1280">
             <button id="downloadButton">Download Image</button>
+            <button id="nextButton">Next Row</button>
             <input type="text" id="textinput" readonly>
             <table id="excelTable">
                 <thead>
@@ -96,6 +97,7 @@
         const fontSizeSlider = document.getElementById('fontSizeSlider');
         const verticalSlider = document.getElementById('verticalSlider');
         const downloadButton = document.getElementById('downloadButton');
+        const nextButton = document.getElementById('nextButton');
         const textInput = document.getElementById('textinput');
         const excelTable = document.getElementById('excelTable').querySelector('tbody');
 
@@ -138,6 +140,16 @@
             });
         }
 
+        function nextRow() {
+            if (currentIndex < textData.length) {
+                currentIndex++;
+                updateExcelTable();
+                drawCanvas();
+            } else {
+                alert('No more rows to process.');
+            }
+        }
+
         function processXLSX(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -147,7 +159,6 @@
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                // Changed to extract from column C (index 2) instead of B (index 1)
                 textData = json.slice(1).map(row => row[2]?.toString().trim()).filter(Boolean);
                 currentIndex = 0;
                 updateExcelTable();
@@ -185,15 +196,13 @@
                 link.download = `Row${currentIndex + 2}_${textData[currentIndex]}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-
-                currentIndex++;
-                updateExcelTable();
-                drawCanvas();
+                nextRow();
             } else {
                 alert('No more rows to process.');
             }
         });
 
+        nextButton.addEventListener('click', nextRow);
         fontSizeSlider.addEventListener('input', drawCanvas);
         verticalSlider.addEventListener('input', drawCanvas);
     </script>
