@@ -25,8 +25,8 @@
             display: flex;
             justify-content: center;
             margin-right: 20px;
-            width: 960px; /* Limiting the width of the canvas area */
-            height: 1280px; /* Limiting the height of the canvas area */
+            width: 960px;
+            height: 1280px;
         }
         canvas {
             width: 100%;
@@ -61,12 +61,10 @@
 </head>
 <body>
     <div class="container">
-        <!-- Canvas Container -->
         <div id="canvas-container">
             <canvas id="canvas"></canvas>
         </div>
 
-        <!-- Controls Section -->
         <div class="controls">
             <h1>Image Overlay</h1>
             <input type="file" id="imageUploader" accept="image/*">
@@ -81,7 +79,7 @@
                 <thead>
                     <tr>
                         <th>Row</th>
-                        <th>Column B</th>
+                        <th>Column C</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -108,30 +106,25 @@
         function drawCanvas() {
             if (!uploadedImage) return;
 
-            // Resize canvas to match the limited canvas area size
-            const canvasWidth = 960; // Set canvas width to 50% of the original image width
-            const canvasHeight = 1280; // Set canvas height to 50% of the original image height
+            const canvasWidth = 960;
+            const canvasHeight = 1280;
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
 
-            // Clear canvas before drawing
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw the text first
             if (textData[currentIndex]) {
                 const fontSize = fontSizeSlider.value;
-                ctx.font = `${fontSize}px bold Arial`; // Text in bold
-                ctx.fillStyle = '#000'; // Text color
+                ctx.font = `${fontSize}px bold Arial`;
+                ctx.fillStyle = '#000';
                 ctx.textAlign = 'center';
-                const textX = canvas.width / 2; // Center horizontally
-                const textY = parseInt(verticalSlider.value, 10); // Position vertically
+                const textX = canvas.width / 2;
+                const textY = parseInt(verticalSlider.value, 10);
                 ctx.fillText(textData[currentIndex], textX, textY);
             }
 
-            // Draw the image on top of the text, scaled to fit canvas size
             ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
 
-            // Update input field with current text
             textInput.value = textData[currentIndex] || '';
         }
 
@@ -154,8 +147,8 @@
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                // Extract data from column B starting from row 2
-                textData = json.slice(1).map(row => row[1]?.toString().trim()).filter(Boolean);
+                // Changed to extract from column C (index 2) instead of B (index 1)
+                textData = json.slice(1).map(row => row[2]?.toString().trim()).filter(Boolean);
                 currentIndex = 0;
                 updateExcelTable();
                 drawCanvas();
