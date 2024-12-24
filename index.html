@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Overlay</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            background-color: #f4f4f4;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            display: flex;
+            align-items: flex-start;
+        }
+        #canvas-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            margin-right: 20px;
+            width: 960px; /* Limiting the width of the canvas area */
+            height: 1280px; /* Limiting the height of the canvas area */
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        input, button, label {
+            margin: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 300px;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr.current-row {
+            background-color: #d9edf7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Canvas Container -->
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="controls">
+            <h1>Image Overlay</h1>
+            <input type="file" id="imageUploader" accept="image/*">
+            <input type="file" id="xlsxUploader" accept=".xlsx">
+            <label>Font Size:</label>
+            <input type="range" id="fontSizeSlider" min="10" max="100" value="30">
+            <label>Vertical Position:</label>
+            <input type="range" id="verticalSlider" min="0" max="2560" value="1280">
+            <button id="downloadButton">Download Image</button>
+            <input type="text" id="textinput" readonly>
+            <table id="excelTable">
+                <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Column B</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const imageUploader = document.getElementById('imageUploader');
+        const xlsxUploader = document.getElementById('xlsxUploader');
+        const fontSizeSlider = document.getElementById('fontSizeSlider');
+        const verticalSlider = document.getElementById('verticalSlider');
+        const downloadButton = document.getElementById('downloadButton');
+        const textInput = document.getElementById('textinput');
+        const excelTable = document.getElementById('excelTable').querySelector('tbody');
+
+        let uploadedImage = null;
+        let textData = [];
+        let currentIndex = 0;
+
+        function drawCanvas() {
+            if (!uploadedImage) return;
+
+            // Resize canvas to match the limited canvas area size
+            const canvasWidth = 960; // Set canvas width to 50% of the original image width
+            const canvasHeight = 1280; // Set canvas height to 50% of the original image height
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Clear canvas before drawing
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the text first
+            if (textData[currentIndex]) {
+                const fontSize = fontSizeSlider.value;
+                ctx.font = `${fontSize}px bold Arial`; // Text in bold
+                ctx.fillStyle = '#000'; // Text color
+                ctx.textAlign = 'center';
+                const textX = canvas.width / 2; // Center horizontally
+                const textY = parseInt(verticalSlider.value, 10); // Position vertically
+                ctx.fillText(textData[currentIndex], textX, textY);
+            }
+
+            // Draw the image on top of the text, scaled to fit canvas size
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+
+            // Update input field with current text
+            textInput.value = textData[currentIndex] || '';
+        }
+
+        function updateExcelTable() {
+            excelTable.innerHTML = '';
+            textData.forEach((text, index) => {
+                const row = document.createElement('tr');
+                row.className = index === currentIndex ? 'current-row' : '';
+                row.innerHTML = `<td>${index + 2}</td><td>${text}</td>`;
+                excelTable.appendChild(row);
+            });
+        }
+
+        function processXLSX(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Extract data from column B starting from row 2
+                textData = json.slice(2).map(row => row[1]?.toString().trim()).filter(Boolean);
+                currentIndex = 0;
+                updateExcelTable();
+                drawCanvas();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        xlsxUploader.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                processXLSX(file);
+            }
+        });
+
+        imageUploader.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        uploadedImage = img;
+                        drawCanvas();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        downloadButton.addEventListener('click', () => {
+            if (currentIndex < textData.length) {
+                const link = document.createElement('a');
+                link.download = `Row${currentIndex + 2}_${textData[currentIndex]}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                currentIndex++;
+                updateExcelTable();
+                drawCanvas();
+            } else {
+                alert('No more rows to process.');
+            }
+        });
+
+        fontSizeSlider.addEventListener('input', drawCanvas);
+        verticalSlider.addEventListener('input', drawCanvas);
+    </script>
+</body>
+</html>
